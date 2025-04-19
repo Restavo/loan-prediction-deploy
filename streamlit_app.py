@@ -10,10 +10,8 @@ with open("best_model.pkl", "rb") as f:
 with open("encoders.pkl", "rb") as f:
     encoders = pickle.load(f)
 
-# ===== Threshold for approval =====
 optimal_threshold = 0.01
 
-# ===== Preprocess input =====
 def preprocess_input(user_input: dict):
     df = pd.DataFrame([user_input])
     for col, encoder in encoders.items():
@@ -21,23 +19,28 @@ def preprocess_input(user_input: dict):
             df[col] = encoder.transform(df[col])
     return df
 
-# ===== Predict =====
 def predict(input_dict):
     data = preprocess_input(input_dict)
     proba = model.predict_proba(data)[0][1]
     return proba, int(proba >= optimal_threshold)
 
-# ===== Streamlit Page Setup =====
+# ===== INITIAL STATE =====
+if "tab" not in st.session_state:
+    st.session_state.tab = "form"
+
 st.set_page_config(page_title="Loan Approval Predictor", layout="centered")
 st.title("💳 Loan Approval Prediction App")
-st.markdown("Welcome! This app predicts whether a loan application is **approved or rejected** based on applicant information.")
+st.markdown("Predict whether a loan will be **approved or rejected** based on applicant details.")
 
 st.markdown("---")
 
-# ===== Tabs for UI Layout =====
-tab1, tab2 = st.tabs(["📝 Application Form", "📊 Prediction Result"])
+# ===== TABS MANUAL BASED ON STATE =====
+tab_choice = st.session_state.tab
 
-with tab1:
+tabs = {"form": "📝 Application Form", "result": "📊 Prediction Result"}
+st.markdown(f"### {tabs[tab_choice]}")
+
+if tab_choice == "form":
     st.subheader("📋 Quick Test Cases")
     col1, col2 = st.columns(2)
 
@@ -75,7 +78,7 @@ with tab1:
             'previous_loan_defaults_on_file': 'Yes'
         })
 
-    st.subheader("📄 Fill in Applicant Details")
+    st.subheader("📄 Applicant Information")
     with st.form("loan_form"):
         person_age = st.number_input("Age", 18, 100, st.session_state.get("person_age", 30))
         person_gender = st.selectbox("Gender", ["male", "female"], index=0 if st.session_state.get("person_gender") == "male" else 1)
@@ -93,33 +96,42 @@ with tab1:
 
         submit = st.form_submit_button("🔍 Predict")
 
-with tab2:
-    if submit:
-        input_data = {
-            "person_age": person_age,
-            "person_gender": person_gender,
-            "person_education": person_education,
-            "person_income": person_income,
-            "person_emp_exp": person_emp_exp,
-            "person_home_ownership": person_home_ownership,
-            "loan_amnt": loan_amnt,
-            "loan_intent": loan_intent,
-            "loan_int_rate": loan_int_rate,
-            "loan_percent_income": loan_percent_income,
-            "cb_person_cred_hist_length": cb_person_cred_hist_length,
-            "credit_score": credit_score,
-            "previous_loan_defaults_on_file": previous_loan_defaults_on_file
-        }
+        if submit:
+            st.session_state.input_data = {
+                "person_age": person_age,
+                "person_gender": person_gender,
+                "person_education": person_education,
+                "person_income": person_income,
+                "person_emp_exp": person_emp_exp,
+                "person_home_ownership": person_home_ownership,
+                "loan_amnt": loan_amnt,
+                "loan_intent": loan_intent,
+                "loan_int_rate": loan_int_rate,
+                "loan_percent_income": loan_percent_income,
+                "cb_person_cred_hist_length": cb_person_cred_hist_length,
+                "credit_score": credit_score,
+                "previous_loan_defaults_on_file": previous_loan_defaults_on_file
+            }
+            st.session_state.tab = "result"
+            st.experimental_rerun()
 
-        with st.spinner("Analyzing loan application..."):
-            time.sleep(1.5)
-            proba, result = predict(input_data)
+# ===== SHOW PREDICTION RESULT TAB =====
+elif tab_choice == "result":
+    st.subheader("📊 Prediction Result")
 
-        st.metric("📈 Approval Probability", f"{proba:.2%}")
-        st.progress(min(int(proba * 100), 100))
+    with st.spinner("Analyzing loan application..."):
+        time.sleep(1.2)
+        proba, result = predict(st.session_state.input_data)
 
-        if result == 1:
-            st.success("✅ Approved")
-            st.balloons()
-        else:
-            st.error("❌ Rejected")
+    st.metric("📈 Approval Probability", f"{proba:.2%}")
+    st.progress(min(int(proba * 100), 100))
+
+    if result == 1:
+        st.success("✅ Approved")
+        st.balloons()
+    else:
+        st.error("❌ Rejected")
+
+    if st.button("🔙 Back to Form"):
+        st.session_state.tab = "form"
+        st.experimental_rerun()
