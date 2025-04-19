@@ -34,9 +34,8 @@ st.markdown("Predict whether a loan will be **approved or rejected** based on ap
 
 st.markdown("---")
 
-# ===== TABS MANUAL BASED ON STATE =====
+# ===== MANUAL TABS BASED ON STATE =====
 tab_choice = st.session_state.tab
-
 tabs = {"form": "📝 Application Form", "result": "📊 Prediction Result"}
 st.markdown(f"### {tabs[tab_choice]}")
 
@@ -81,7 +80,7 @@ if tab_choice == "form":
     st.subheader("📄 Applicant Information")
     with st.form("loan_form"):
         person_age = st.number_input("Age", 18, 100, st.session_state.get("person_age", 30))
-        person_gender = st.selectbox("Gender", ["male", "female"], index=0 if st.session_state.get("person_gender") == "male" else 1)
+        person_gender = st.selectbox("Gender", ["male", "female"], index=0 if st.session_state.get("person_gender", "male") == "male" else 1)
         person_education = st.selectbox("Education", ["High School", "Bachelor", "Master", "PhD"], index=["High School", "Bachelor", "Master", "PhD"].index(st.session_state.get("person_education", "Bachelor")))
         person_income = st.number_input("Annual Income ($)", 0, 1_000_000, st.session_state.get("person_income", 50000))
         person_emp_exp = st.slider("Work Experience (Years)", 0, 40, st.session_state.get("person_emp_exp", 5))
@@ -92,7 +91,7 @@ if tab_choice == "form":
         loan_percent_income = st.number_input("Loan-to-Income Ratio", 0.0, 2.0, st.session_state.get("loan_percent_income", loan_amnt / max(person_income, 1)))
         cb_person_cred_hist_length = st.slider("Credit History Length (Years)", 0, 30, st.session_state.get("cb_person_cred_hist_length", 5))
         credit_score = st.number_input("Credit Score", 300, 900, st.session_state.get("credit_score", 600))
-        previous_loan_defaults_on_file = st.selectbox("Previous Loan Defaults?", ["Yes", "No"], index=0 if st.session_state.get("previous_loan_defaults_on_file") == "Yes" else 1)
+        previous_loan_defaults_on_file = st.selectbox("Previous Loan Defaults?", ["Yes", "No"], index=0 if st.session_state.get("previous_loan_defaults_on_file", "No") == "Yes" else 1)
 
         submit = st.form_submit_button("🔍 Predict")
 
@@ -112,10 +111,12 @@ if tab_choice == "form":
                 "credit_score": credit_score,
                 "previous_loan_defaults_on_file": previous_loan_defaults_on_file
             }
-            st.session_state.tab = "result"
-            st.experimental_rerun()
 
-# ===== SHOW PREDICTION RESULT TAB =====
+            st.session_state.tab = "result"
+            st.success("✅ Predicting... Please wait!")
+            time.sleep(0.5)
+            st._rerun()
+
 elif tab_choice == "result":
     st.subheader("📊 Prediction Result")
 
@@ -134,4 +135,4 @@ elif tab_choice == "result":
 
     if st.button("🔙 Back to Form"):
         st.session_state.tab = "form"
-        st.experimental_rerun()
+        st._rerun()
